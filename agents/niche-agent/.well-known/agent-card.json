@@ -1,0 +1,14 @@
+{
+  "name": "Niche Agent",
+  "description": "Analyzes topic and proposes consulting niches",
+  "protocolVersion": "0.3.0",
+  "version": "0.1.0",
+  "url": "http://localhost:4001/",
+  "skills": [
+    {
+      "id": "analyze-niche",
+      "name": "Analyze Niche",
+      "description": "Return consulting niche ideas"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Quiz Agent",
+  "description": "Analyzes quiz questions and provides answers",
+  "protocolVersion": "0.3.0",
+  "version": "0.1.0",
+  "url": "http://localhost:4001/",
+  "skills": [
+    {
+      "id": "analyze-quiz",
+      "name": "Analyze Quiz",
+      "description": "Return quiz answers"
+    }
+  ]
+}

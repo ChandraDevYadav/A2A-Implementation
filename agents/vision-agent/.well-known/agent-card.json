@@ -1,0 +1,14 @@
+{
+  "name": "Vision Agent",
+  "description": "Analyzes visual content and provides insights",
+  "protocolVersion": "0.3.0",
+  "version": "0.1.0",
+  "url": "http://localhost:4001/",
+  "skills": [
+    {
+      "id": "analyze-visual-content",
+      "name": "Analyze Visual Content",
+      "description": "Return insights from visual content"
+    }
+  ]
+}

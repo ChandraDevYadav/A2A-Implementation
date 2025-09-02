@@ -1,0 +1,12 @@
+{
+  "name": "a2a-mern",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install-all": "cd agents/niche-agent && npm install && cd ../vision-agent && npm install && cd ../speaker-agent && npm install && cd ../quiz-agent && npm install && cd ../../frontend && npm install",
+    "start-all": "concurrently \"cd agents/niche-agent && npm start\" \"cd agents/vision-agent && npm start\" \"cd agents/speaker-agent && npm start\" \"cd agents/quiz-agent && npm start\" \"cd frontend && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
