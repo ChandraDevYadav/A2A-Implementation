@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const MessageSchema = new mongoose.Schema(
   {
-    type: { type: String, required: true }, // TaskSend, TaskArtifactUpdate, etc.
-    from: { type: String, required: true },
-    to: { type: String, required: true },
+    type: { type: String },
+    from: { type: String },
+    to: { type: String },
     payload: { type: Object, default: {} },
     status: {
       type: String,

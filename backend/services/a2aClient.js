@@ -1,39 +1,31 @@
-import axios from "axios";
+import { A2AClient } from "@a2a-js/sdk/client";
 import Message from "../models/Message.js";
 
-export async function sendA2AMessage({
-  toUrl,
-  fromName,
-  toName,
-  type,
-  payload,
-}) {
-  const msg = await Message.create({
-    type,
-    from: fromName,
-    to: toName,
-    payload,
+export async function sendA2A({ cardUrl, message, fromName }) {
+  // persist outgoing message
+  const dbMsg = await Message.create({
+    type: message.kind,
+    from: fromName || "gateway",
+    to: cardUrl,
+    payload: message,
     status: "sent",
   });
   try {
-    const { data } = await axios.post(`${toUrl}/a2a/message`, {
-      type,
-      from: fromName,
-      to: toName,
-      payload,
-    });
+    const client = await A2AClient.fromCardUrl(cardUrl);
+    const res = await client.sendMessage({ message });
+    // mark received artifact/message
     await Message.create({
-      type: data.type ?? "TaskArtifactUpdate",
-      from: toName,
-      to: fromName,
-      payload: data.payload,
+      type: res?.kind || "TaskArtifactUpdate",
+      from: cardUrl,
+      to: fromName || "gateway",
+      payload: res?.result || res,
       status: "received",
     });
-    return data;
+    return res;
   } catch (err) {
-    msg.status = "error";
-    msg.error = err.message;
-    await msg.save();
+    dbMsg.status = "error";
+    dbMsg.error = err.message;
+    await dbMsg.save();
     throw err;
   }
 }
