@@ -3,7 +3,7 @@
   "description": "Analyzes quiz questions and provides answers",
   "protocolVersion": "0.3.0",
   "version": "0.1.0",
-  "url": "http://localhost:4001/",
+  "url": "https://quizcreator.testir.xyz/",
   "skills": [
     {
       "id": "analyze-quiz",

@@ -3,7 +3,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
-import { A2AClient } from "@a2a-js/sdk/client";
+import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 
 const app = express();
@@ -32,10 +32,9 @@ const quizResults = [];
 // REST API: store quiz result from frontend
 app.post("/api/results", async (req, res) => {
   const result = req.body;
-  quizResults.unshift(result); // store latest first
+  quizResults.unshift(result);
   console.log("📥 Quiz Result received:", result);
 
-  // Broadcast to frontend
   broadcastLog({
     agent: "Quiz-Agent",
     status: "received result",
@@ -43,27 +42,23 @@ app.post("/api/results", async (req, res) => {
     timestamp: new Date().toISOString(),
   });
 
-  // Forward to Quiz-Agent via A2A
+  // Forward to Quiz-Agent via HTTP POST
   try {
-    const client = await A2AClient.fromCardUrl(
-      "http://localhost:6002/.well-known/agent-card.json"
-    );
-    const message = {
-      messageId: uuidv4(),
-      role: "user",
-      kind: "message",
-      parts: [{ kind: "text", text: JSON.stringify(result) }],
-    };
-    await client.sendMessage({ message });
+    const response = await axios.post("http://localhost:6002/a2a", {
+      jsonrpc: "2.0",
+      id: uuidv4(),
+      method: "handleRequest",
+      params: { topic: JSON.stringify(result) },
+    });
 
     broadcastLog({
       agent: "Quiz-Agent",
       status: "forwarded",
-      payload: result,
+      payload: response.data,
       timestamp: new Date().toISOString(),
     });
 
-    console.log("➡️ Forwarded result to Quiz-Agent via A2A");
+    console.log("➡️ Forwarded result to Quiz-Agent via HTTP POST");
   } catch (err) {
     console.error("❌ Failed to forward to Quiz-Agent:", err.message);
 
@@ -96,32 +91,72 @@ app.post("/api/ask", async (req, res) => {
   });
 
   try {
-    const client = await A2AClient.fromCardUrl(
-      "http://localhost:6001/.well-known/agent-card.json"
-    );
-    const message = {
-      messageId: uuidv4(),
-      role: "user",
-      kind: "message",
-      parts: [{ kind: "text", text: question }],
-    };
-    const response = await client.sendMessage({ message });
+    const response = await axios.post("http://localhost:6003/a2a", {
+      jsonrpc: "2.0",
+      id: uuidv4(),
+      method: "handleRequest",
+      params: { topic: question },
+    });
 
-    console.log("⬅️ Response from Speaker-Agent:", response.result || response);
+    console.log("⬅️ Response from Speaker-Agent:", response.data);
 
     broadcastLog({
       agent: "Speaker-Agent",
       status: "responded",
-      payload: response.result || response,
+      payload: response.data,
       timestamp: new Date().toISOString(),
     });
 
-    res.json(response.result || response);
+    res.json(response.data);
   } catch (err) {
     console.error("❌ Error sending to Speaker-Agent:", err.message);
 
     broadcastLog({
       agent: "Speaker-Agent",
+      status: "error",
+      payload: err.message,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// REST API: forward question to Niche-Agent
+app.post("/api/niche", async (req, res) => {
+  const { question } = req.body;
+  console.log("➡️ Forwarding question to Niche-Agent:", question);
+
+  broadcastLog({
+    agent: "Niche-Agent",
+    status: "question received",
+    payload: question,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    const response = await axios.post("http://localhost:6000/a2a", {
+      jsonrpc: "2.0",
+      id: uuidv4(),
+      method: "handleRequest",
+      params: { topic: question },
+    });
+
+    console.log("⬅️ Response from Niche-Agent:", response.data);
+
+    broadcastLog({
+      agent: "Niche-Agent",
+      status: "responded",
+      payload: response.data,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ Error sending to Niche-Agent:", err.message);
+
+    broadcastLog({
+      agent: "Niche-Agent",
       status: "error",
       payload: err.message,
       timestamp: new Date().toISOString(),

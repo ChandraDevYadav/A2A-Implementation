@@ -3,7 +3,7 @@
   "description": "Analyzes visual content and provides insights",
   "protocolVersion": "0.3.0",
   "version": "0.1.0",
-  "url": "http://localhost:4001/",
+  "url": "https://businessvision.aidistrictagents.com/",
   "skills": [
     {
       "id": "analyze-visual-content",

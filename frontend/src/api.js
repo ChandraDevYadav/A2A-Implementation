@@ -1,8 +1,9 @@
+// src/api.js
 const BASE_URLS = {
-  niche: "http://localhost:4001",
-  vision: "http://localhost:4002",
-  speaker: "http://localhost:4003",
-  quiz: "http://localhost:4004",
+  niche: "http://localhost:4000/api/niche",
+  vision: "http://localhost:4000/api/vision",
+  speaker: "http://localhost:4000/api/speaker",
+  quiz: "http://localhost:4000/api/quiz",
 };
 
 async function callAgent(agent, endpoint, method = "POST", body = {}) {
@@ -34,7 +35,9 @@ export const api = {
     generateSpeech: (text) => callAgent("speaker", "/speak", "POST", { text }),
   },
   quiz: {
-    generateQuiz: (topic) =>
-      callAgent("quiz", "/generate-quiz", "POST", { topic }),
+    generateQuizFromText: (text) =>
+      callAgent("quiz", "/generate-quiz", "POST", { text }),
+    generateQuizFromPDF: (pdfBase64) =>
+      callAgent("quiz", "/generate-quiz", "POST", { pdfBase64 }),
   },
 };

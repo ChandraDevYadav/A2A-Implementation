@@ -1,8 +1,15 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { A2AClient } from "@a2a-js/sdk/client";
-import { v4 as uuidv4 } from "uuid";
+import {
+  DefaultRequestHandler,
+  JsonRpcTransportHandler,
+  InMemoryTaskStore,
+  DefaultExecutionEventBus,
+  DefaultExecutionEventBusManager,
+  ResultManager,
+  RequestContext,
+} from "@a2a-js/sdk/server";
 
 const app = express();
 const PORT = 6003;
@@ -11,37 +18,51 @@ const agentId = "quiz-agent";
 app.use(cors());
 app.use(bodyParser.json());
 
-app.post("/a2a", async (req, res) => {
-  const { message } = req.body;
-  console.log(
-    `📩 ${agentId} received quiz result:`,
-    message.parts.map((p) => p.text).join(" ")
-  );
+// === Core A2A Agent Setup ===
+const taskStore = new InMemoryTaskStore();
+const eventBus = new DefaultExecutionEventBus();
+const eventBusManager = new DefaultExecutionEventBusManager(eventBus);
+const resultManager = new ResultManager(taskStore, eventBusManager);
 
-  // Optionally process or score quiz here
-  const resultText = `Quiz-Agent scored: "${message.parts
-    .map((p) => p.text)
-    .join(" ")}"`;
+// === Quiz Agent Logic ===
+async function quizAgentLogic(input) {
+  console.log(`👉 ${agentId} received input:`, input);
 
-  try {
-    const client = await A2AClient.fromCardUrl(
-      "http://localhost:4000/.well-known/agent-card.json"
-    );
-    const responseMessage = {
-      messageId: uuidv4(),
-      role: "agent",
-      kind: "message",
-      parts: [{ kind: "text", text: resultText }],
-    };
-    await client.sendMessage({ message: responseMessage });
-    console.log(`⬅️ ${agentId} sent scored result back to Gateway`);
-  } catch (err) {
-    console.error("❌ Error sending back to Gateway:", err.message);
+  const text = input.topic || input.text || "";
+  let recommendation = "";
+
+  if (text.toLowerCase().includes("linux")) {
+    recommendation = "Linux Foundation Certified System Administrator Course";
+  } else if (text.toLowerCase().includes("cloud")) {
+    recommendation = "Cloud Native Kubernetes Fundamentals";
+  } else {
+    recommendation = "General Entrepreneurship & Startup Course";
   }
 
-  res.json({ status: "ok" });
+  return { recommendation, originalInput: text };
+}
+
+// === Request Handler ===
+const requestHandler = new DefaultRequestHandler(async (request) => {
+  const ctx = new RequestContext(request);
+  const result = await quizAgentLogic(request.params);
+  return resultManager.createSuccessResult(ctx, result);
+});
+
+// === JSON-RPC Transport Handler ===
+const transportHandler = new JsonRpcTransportHandler(requestHandler);
+
+// === API Endpoint ===
+app.post("/a2a", async (req, res) => {
+  try {
+    const result = await transportHandler.handle(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Error handling request:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {
-  console.log(`🤖 ${agentId} running at http://localhost:${PORT}`);
+  console.log(`🤖 ${agentId} running at http://localhost:${PORT}/a2a`);
 });

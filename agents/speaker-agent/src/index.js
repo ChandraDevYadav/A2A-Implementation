@@ -1,8 +1,15 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { A2AClient } from "@a2a-js/sdk/client";
-import { v4 as uuidv4 } from "uuid";
+import {
+  DefaultRequestHandler,
+  JsonRpcTransportHandler,
+  InMemoryTaskStore,
+  DefaultExecutionEventBus,
+  DefaultExecutionEventBusManager,
+  ResultManager,
+  RequestContext,
+} from "@a2a-js/sdk/server";
 
 const app = express();
 const PORT = 6002;
@@ -11,36 +18,44 @@ const agentId = "speaker-agent";
 app.use(cors());
 app.use(bodyParser.json());
 
+// === Core A2A Agent Setup ===
+const taskStore = new InMemoryTaskStore();
+const eventBus = new DefaultExecutionEventBus();
+const eventBusManager = new DefaultExecutionEventBusManager(eventBus);
+const resultManager = new ResultManager(taskStore, eventBusManager);
+
+// === Speaker Agent Logic ===
+async function speakerAgentLogic(input) {
+  console.log(`👉 ${agentId} received input:`, input);
+
+  const text = input.topic || input.text || "";
+  // Example logic: generate a simple answer
+  const answer = `Speaker-Agent generated answer for: "${text}"`;
+
+  return { answer, originalInput: text };
+}
+
+// === Request Handler ===
+const requestHandler = new DefaultRequestHandler(async (request) => {
+  const ctx = new RequestContext(request);
+  const result = await speakerAgentLogic(request.params);
+  return resultManager.createSuccessResult(ctx, result);
+});
+
+// === JSON-RPC Transport Handler ===
+const transportHandler = new JsonRpcTransportHandler(requestHandler);
+
+// === API Endpoint ===
 app.post("/a2a", async (req, res) => {
-  const { message } = req.body;
-  console.log(
-    `📩 ${agentId} received message:`,
-    message.parts.map((p) => p.text).join(" ")
-  );
-
-  const responseText = `Speaker-Agent generated answer for: "${message.parts
-    .map((p) => p.text)
-    .join(" ")}"`;
-
   try {
-    const client = await A2AClient.fromCardUrl(
-      "http://localhost:4000/.well-known/agent-card.json"
-    );
-    const responseMessage = {
-      messageId: uuidv4(),
-      role: "agent",
-      kind: "message",
-      parts: [{ kind: "text", text: responseText }],
-    };
-    await client.sendMessage({ message: responseMessage });
-    console.log(`⬅️ ${agentId} sent response back to Gateway`);
+    const result = await transportHandler.handle(req.body);
+    res.json(result);
   } catch (err) {
-    console.error("❌ Error sending back to Gateway:", err.message);
+    console.error("❌ Error handling request:", err);
+    res.status(500).json({ error: err.message });
   }
-
-  res.json({ status: "ok" });
 });
 
 app.listen(PORT, () => {
-  console.log(`🤖 ${agentId} running at http://localhost:${PORT}`);
+  console.log(`🤖 ${agentId} running at http://localhost:${PORT}/a2a`);
 });

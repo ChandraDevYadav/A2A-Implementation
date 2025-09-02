@@ -1,29 +1,25 @@
 import express from "express";
 import cors from "cors";
-import { connectDB } from "./config/db.js";
-import { env } from "./config/env.js";
-import { logger } from "./utils/logger.js";
-import agentRoutes from "./routes/agentRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
-import taskRoutes from "./routes/taskRoutes.js";
-import notFound from "./middleware/notFound.js";
-import errorHandler from "./middleware/errorHandler.js";
+import bodyParser from "body-parser";
+import quizRoutes from "./routes/quizRoutes.js";
+import nicheRoutes from "./routes/nicheRoutes.js";
+import visionRoutes from "./routes/visionRoutes.js";
+import speakerRoutes from "./routes/speakerRoutes.js";
 
 const app = express();
-app.use(cors({ origin: env.CORS_ORIGIN }));
-app.use(express.json());
-app.use(logger);
+const PORT = 4000;
 
-app.get("/", (req, res) => res.send("A2A Gateway API"));
+app.use(cors({ origin: "http://localhost:5173" })); // allow frontend
+app.use(bodyParser.json());
 
-app.use("/api/agents", agentRoutes);
-app.use("/api/messages", messageRoutes);
-app.use("/api/tasks", taskRoutes);
+// Agent routes
+app.use("/api/niche", nicheRoutes);
+app.use("/api/vision", visionRoutes);
+app.use("/api/speaker", speakerRoutes);
+app.use("/api/quiz", quizRoutes);
 
-app.use(notFound);
-app.use(errorHandler);
+app.get("/", (req, res) => res.send("A2A Gateway API running"));
 
-await connectDB();
-app.listen(env.PORT, () =>
-  console.log(`[gateway] http://localhost:${env.PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`🌐 Gateway API running at http://localhost:${PORT}`);
+});
